@@ -41,7 +41,7 @@ Settings > Developer > Edit Config, then merge:
     "elasticsearch": {
       "command": "docker",
       "args": ["run", "-i", "--rm",
-               "-e", "ES_URL=http://host.docker.internal:9200",
+               "-e", "ES_URL=http://host.docker.internal:9280",
                "docker.elastic.co/mcp/elasticsearch", "stdio"]
     }
   }
@@ -67,37 +67,75 @@ Mode (Plus/Pro/Business and up).
    Docker; with `localhost` it logs
    `Container mode: could not find a replacement for 'localhost'` and cannot
    reach the cluster.
-3. **`get_mappings` is broken against this data** — see below.
+3. **Use port 9280, not 9200.** 9280 is the `mcp-proxy` service, which works
+   around a server bug that otherwise breaks `get_mappings` on all ECS data —
+   see below. Pointing at 9200 works for four of the five tools.
 
-## Known bug: get_mappings
+## The get_mappings bug, and the fix
 
-`get_mappings` returns `error decoding response body` (JSON-RPC -32603) on any
-index whose mapping contains a nested object field. Elasticsearch returns a
-valid 200; the failure is in the server's own response deserialisation.
+Out of the box `get_mappings` returns `error decoding response body`
+(JSON-RPC -32603) on every index in this lab. Elasticsearch returns a valid
+200; the MCP server's own deserialiser rejects it. This is upstream
+[issue #173](https://github.com/elastic/mcp-server-elasticsearch/issues/173):
+the server requires object properties to carry an explicit `type`.
 
-Verified by bisecting the real mapping down to a minimal reproducer:
+Bisecting the real 406-field mapping gives this minimal reproducer:
 
 ```json
-{"mappings": {"properties": {"agent": {"properties": {"type": {"type": "keyword"}}}}}}
+{"mappings": {"properties": {"agent": {"properties": {"kind": {"type": "keyword"}}}}}}
 ```
 
-Flat mappings (`{"host": {"type": "keyword"}}`) decode fine. Since all ECS data
-is dotted objects, `get_mappings` is effectively unusable for this lab.
+Any object field triggers it; flat mappings are fine. That means **all** ECS
+data breaks it, since dotted names like `agent.type` become objects.
 
-**Workaround — tell the agent to discover fields with ES|QL instead:**
+### Why this cannot be fixed in the index template
+
+Two dead ends, both tested:
+
+- Declaring `"type": "object"` explicitly does not help — Elasticsearch
+  normalises it away, and `GET _mapping` returns a byte-identical response.
+- Upstream suggests `"type": "nested"`, which *is* preserved, but nested
+  fields require nested queries and break ES|QL aggregations across ECS. Not
+  worth it to satisfy one tool.
+
+The mapping response shape is Elasticsearch's to decide, so no change to
+`elastic/index-template-*.json` or the loaders can affect this.
+
+### The fix: scripts/es_mapping_proxy.py
+
+A ~100-line stdlib-only reverse proxy runs as the `mcp-proxy` compose service
+on `127.0.0.1:9280`. It passes everything through untouched except successful
+`_mapping` reads, which it flattens to dotted leaf fields:
 
 ```
-FROM winlogbeat-apt29-host-day1 | KEEP process.* | LIMIT 1
+{"agent": {"properties": {"type": {"type": "keyword"}}}}   ->  {"agent.type": {"type": "keyword"}}
 ```
 
-This lists every `process.*` column. A `search` with `size: 1` also works, but
-returns the huge raw `Message` blob.
+The MCP server parses that happily. **Point the MCP server at 9280, not 9200.**
+Elasticsearch itself is untouched and still serves 9200 normally.
 
-Related rough edge: on a bad query the server reports only
-`HTTP status client error (400 Bad Request)` and discards Elasticsearch's actual
-parser error, so an agent cannot self-correct. Watch for agents looping on a
-malformed query. (Careful with ES|QL reserved words — `STATS first = MIN(...)`
-is a syntax error; rename the alias.)
+Verified: all five tools work through it, and `get_mappings` on
+`winlogbeat-apt29-host-day1` returns 443 flat fields including
+`process.command_line`, `process.parent.name` and `destination.ip`. The flat
+output is also easier for an agent to read than nested JSON.
+
+Bring it up with the rest of the stack:
+
+```
+docker compose --env-file lab.conf up -d
+```
+
+If you prefer not to run the proxy, the alternative is to tell agents to skip
+`get_mappings` and discover fields with
+`FROM winlogbeat-apt29-host-day1 | KEEP process.* | LIMIT 1`.
+
+### Unrelated rough edge
+
+On a bad query the server reports only
+`HTTP status client error (400 Bad Request)` and discards Elasticsearch's
+parser error, so an agent cannot self-correct and may loop on a malformed
+query. Careful with ES|QL reserved words: `STATS first = MIN(...)` is a syntax
+error; rename the alias.
 
 ## Verified investigation
 

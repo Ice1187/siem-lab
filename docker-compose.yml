@@ -53,6 +53,34 @@ services:
       retries: 40
       start_period: 90s
 
+  # Sits in front of Elasticsearch for the MCP server only. The Elastic MCP
+  # server cannot parse a mapping containing object fields, which is every ECS
+  # mapping; this flattens _mapping responses to dotted fields. See
+  # docs/mcp-setup.md.
+  mcp-proxy:
+    image: python:3.12-alpine
+    container_name: apt29-mcp-proxy
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - ES_UPSTREAM=http://elasticsearch:9200
+      - PROXY_PORT=9280
+    command: ["python", "/app/es_mapping_proxy.py"]
+    volumes:
+      - ./scripts/es_mapping_proxy.py:/app/es_mapping_proxy.py:ro
+    mem_limit: 128m
+    ports:
+      - "127.0.0.1:9280:9280"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:9280/_cluster/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+
 volumes:
   esdata:
   kibanadata:
