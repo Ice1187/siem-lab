@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "elasticsearch": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "ES_URL=http://host.docker.internal:9200",
+        "docker.elastic.co/mcp/elasticsearch", "stdio"
+      ]
+    }
+  }
+}
