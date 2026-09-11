@@ -1,0 +1,90 @@
+{
+  "index_patterns": ["winlogbeat-apt29-zeek-*"],
+  "priority": 500,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "refresh_interval": "30s",
+      "mapping.total_fields.limit": 3000
+    },
+    "mappings": {
+      "dynamic_templates": [
+        {
+          "strings_as_keyword": {
+            "match_mapping_type": "string",
+            "mapping": { "type": "keyword", "ignore_above": 2048 }
+          }
+        }
+      ],
+      "properties": {
+        "@timestamp":          { "type": "date" },
+        "@timestamp_original": { "type": "date" },
+        "ts":                  { "type": "double" },
+        "ts_original":         { "type": "double" },
+
+        "@stream": { "type": "keyword" },
+        "@system": { "type": "keyword" },
+        "@proc":   { "type": "keyword" },
+        "uid":     { "type": "keyword" },
+
+        "id_orig_h": { "type": "ip" },
+        "id_resp_h": { "type": "ip" },
+        "id_orig_p": { "type": "integer" },
+        "id_resp_p": { "type": "integer" },
+
+        "status_code":       { "type": "integer" },
+        "request_body_len":  { "type": "long" },
+        "response_body_len": { "type": "long" },
+        "duration":          { "type": "double" },
+        "orig_bytes":        { "type": "long" },
+        "resp_bytes":        { "type": "long" },
+        "orig_pkts":         { "type": "long" },
+        "resp_pkts":         { "type": "long" },
+        "orig_ip_bytes":     { "type": "long" },
+        "resp_ip_bytes":     { "type": "long" },
+        "missed_bytes":      { "type": "long" },
+        "seen_bytes":        { "type": "long" },
+        "total_bytes":       { "type": "long" },
+        "overflow_bytes":    { "type": "long" },
+
+        "ecs":      { "properties": { "version": { "type": "keyword" } } },
+        "agent":    { "properties": { "type": { "type": "keyword" } } },
+        "observer": { "properties": { "name": { "type": "keyword" }, "type": { "type": "keyword" } } },
+
+        "event": {
+          "properties": {
+            "kind":     { "type": "keyword" },
+            "module":   { "type": "keyword" },
+            "dataset":  { "type": "keyword" },
+            "category": { "type": "keyword" },
+            "type":     { "type": "keyword" },
+            "action":   { "type": "keyword" },
+            "id":       { "type": "keyword" },
+            "duration": { "type": "long" }
+          }
+        },
+
+        "zeek": { "properties": { "stream": { "type": "keyword" } } },
+
+        "source":      { "properties": { "ip": { "type": "ip" }, "port": { "type": "integer" }, "bytes": { "type": "long" } } },
+        "destination": { "properties": { "ip": { "type": "ip" }, "port": { "type": "integer" }, "bytes": { "type": "long" } } },
+        "network":     { "properties": { "transport": { "type": "keyword" }, "protocol": { "type": "keyword" } } },
+        "dns":         { "properties": { "question": { "properties": { "name": { "type": "keyword" }, "type": { "type": "keyword" } } } } },
+        "url":         { "properties": { "original": { "type": "keyword", "ignore_above": 4096 }, "domain": { "type": "keyword" } } },
+        "user_agent":  { "properties": { "original": { "type": "keyword", "ignore_above": 2048 } } },
+        "http": {
+          "properties": {
+            "request":  { "properties": { "method": { "type": "keyword" } } },
+            "response": { "properties": { "status_code": { "type": "integer" } } }
+          }
+        },
+        "file":        { "properties": { "name": { "type": "keyword" }, "path": { "type": "keyword" } } }
+      }
+    }
+  },
+  "_meta": {
+    "description": "APT29 evals day1 Zeek network logs, shifted with the same delta as the host events",
+    "note": "named winlogbeat-* only so that Elastic Security's default data view picks it up; it is not winlogbeat data"
+  }
+}

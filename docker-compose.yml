@@ -1,0 +1,58 @@
+# APT29 SIEM demo - single-node Elasticsearch + Kibana, localhost only.
+# Security is disabled on purpose: this is a throwaway local demo stack with no
+# credentials to manage. Do not expose these ports beyond localhost.
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION:-8.19.21}
+    container_name: apt29-es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - xpack.license.self_generated.type=basic
+      - ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms2g -Xmx2g}
+      - bootstrap.memory_lock=true
+      - action.destructive_requires_name=false
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    mem_limit: 4g
+    ports:
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION:-8.19.21}
+    container_name: apt29-kibana
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_PUBLICBASEURL=http://localhost:5601
+      # Stable encryption keys so saved objects / detection rules survive a restart.
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=apt29demoapt29demoapt29demoapt29demo01
+      - XPACK_SECURITY_ENCRYPTIONKEY=apt29demoapt29demoapt29demoapt29demo02
+      - XPACK_REPORTING_ENCRYPTIONKEY=apt29demoapt29demoapt29demoapt29demo03
+    mem_limit: 2g
+    ports:
+      - "127.0.0.1:5601:5601"
+    volumes:
+      - kibanadata:/usr/share/kibana/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5601/api/status | grep -q '\"level\":\"available\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 90s
+
+volumes:
+  esdata:
+  kibanadata:
