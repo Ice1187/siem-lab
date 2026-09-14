@@ -1,6 +1,15 @@
 # APT29 SIEM demo - single-node Elasticsearch + Kibana, localhost only.
 # Security is disabled on purpose: this is a throwaway local demo stack with no
 # credentials to manage. Do not expose these ports beyond localhost.
+#
+# The project name is pinned here rather than left to the directory name, so
+# that renaming or cloning the repo does not orphan running containers and
+# volumes. It lives in this file (not lab.conf) because Compose reads a top
+# level 'name' on every invocation, whereas an env file is only read when
+# --env-file is passed -- so a bare "docker compose down" still targets the
+# right project.
+name: apt29-siem-lab
+
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION:-8.19.21}
