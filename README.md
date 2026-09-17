@@ -2,7 +2,7 @@
 
 把 MITRE ATT&CK Evaluations 的 **APT29 Day 1** 真實攻擊日誌，載入本機的
 Elasticsearch + Kibana，並且把事件時間**平移到一個固定的時間點**
-（預設 **2026-09-10 12:00**），讓講師和所有學員看到的時間軸完全一致。
+（預設 **2026-09-17 12:00**），讓講師和所有學員看到的時間軸完全一致。
 
 - 主機日誌 196,081 筆（Sysmon / Security / PowerShell，四台 Windows 主機）
 - 網路日誌 2,140 筆（Zeek，安裝時可選擇要不要載入）
@@ -56,12 +56,12 @@ Python 不用自己裝，`setup.sh` 會自動安裝 [uv](https://docs.astral.sh/
 跑完會看到：
 
 ```
-Lab is ready.  Events are replayed at 2026-09-10 12:00 Asia/Taipei (fixed date)
+Lab is ready.  Events are replayed at 2026-09-17 12:00 Asia/Taipei (fixed date)
 
   Kibana     http://localhost:5601
   Discover   http://localhost:5601/app/discover
   Time range set the Kibana time picker to this absolute range:
-             Sep 10, 2026 @ 12:00:00.000 -> Sep 10, 2026 @ 12:40:00.000
+             Sep 17, 2026 @ 12:00:00.000 -> Sep 17, 2026 @ 12:40:00.000
 ```
 
 最後那個**時間範圍請直接複製**，貼到 Kibana 右上角的時間選擇器
@@ -87,15 +87,15 @@ Lab is ready.  Events are replayed at 2026-09-10 12:00 Asia/Taipei (fixed date)
 打開 <http://localhost:5601> → 左上角選單 → **Discover** → 資料檢視選
 **APT29 lab**。
 
-> **以下日期是 `lab.conf` 的預設值（`ANCHOR_DATE=2026-09-10`）。**
+> **以下日期是 `lab.conf` 的預設值（`ANCHOR_DATE=2026-09-17`）。**
 > 如果你改過 `ANCHOR_DATE`，請自行換成你設定的日期 ——
 > `./setup.sh` 跑完會印出當下正確的絕對時間範圍與連結，以那個為準。
 
 > **右上角時間範圍要自己設。**
 > Kibana 預設是「Last 15 minutes」，那個區間沒有資料，畫面會是空的。
-> 資料固定落在 **2026-09-10 12:00 – 12:40**（Asia/Taipei），
+> 資料固定落在 **2026-09-17 12:00 – 12:40**（Asia/Taipei），
 > 時間選擇器選 **Absolute** 並貼上：
-> `Sep 10, 2026 @ 12:00:00.000` → `Sep 10, 2026 @ 12:40:00.000`
+> `Sep 17, 2026 @ 12:00:00.000` → `Sep 17, 2026 @ 12:40:00.000`
 
 幾個可以直接貼上的 KQL 查詢：
 
@@ -127,7 +127,7 @@ agent.type:"zeek" and zeek.stream:"http"
 程序樹**不在 Discover**，在 Security app 裡。步驟：
 
 1. 左側選單 **Security → Explore → Hosts**，選 **Events** 分頁
-2. 右上角時間範圍設成 `Sep 10, 2026 @ 12:00:00.000` → `Sep 10, 2026 @ 12:40:00.000`
+2. 右上角時間範圍設成 `Sep 17, 2026 @ 12:00:00.000` → `Sep 17, 2026 @ 12:40:00.000`
 3. 查詢列貼上（找出最初的惡意程式）：
    ```
    process.name:*3aka3* and event.category:"process" and event.type:"start"
@@ -141,7 +141,7 @@ agent.type:"zeek" and zeek.stream:"http"
 `./setup.sh` 跑完也會印出這個連結）：
 
 ```
-http://localhost:5601/app/security/hosts/events?sourcerer=(default:(id:security-solution-default,selectedPatterns:!('winlogbeat-apt29-*')))&timerange=(global:(linkTo:!(timeline),timerange:(from:%272026-09-10T04:00:00.000Z%27,kind:absolute,to:%272026-09-10T04:40:00.000Z%27)),timeline:(linkTo:!(global),timerange:(from:%272026-09-10T04:00:00.000Z%27,kind:absolute,to:%272026-09-10T04:40:00.000Z%27)))&query=(language:kuery,query:'process.name:*3aka3* and event.category:"process" and event.type:"start"')
+http://localhost:5601/app/security/hosts/events?sourcerer=(default:(id:security-solution-default,selectedPatterns:!('winlogbeat-apt29-*')))&timerange=(global:(linkTo:!(timeline),timerange:(from:%272026-09-17T04:00:00.000Z%27,kind:absolute,to:%272026-09-17T04:40:00.000Z%27)),timeline:(linkTo:!(global),timerange:(from:%272026-09-17T04:00:00.000Z%27,kind:absolute,to:%272026-09-17T04:40:00.000Z%27)))&query=(language:kuery,query:'process.name:*3aka3* and event.category:"process" and event.type:"start"')
 ```
 
 畫出來的程序樹（用滾輪縮放、可拖曳；節點下方的 `1 file` / `65 library` /
@@ -187,7 +187,7 @@ Windows/Sysmon 原生名稱），ECS 欄位是**額外加上去**的，兩種都
 
 **時間相關**
 
-1. **資料已平移到固定時間 2026-09-10 12:00**（台北時間）。原始時間保留在
+1. **資料已平移到固定時間 2026-09-17 12:00**（台北時間）。原始時間保留在
    `@timestamp_original`、`UtcTime_original`、`EventTime_original`，
    原始區間是 2020-05-02 02:55–03:28 UTC。
    因為是**固定日期**，不管哪天安裝，時間軸都一樣，講師和學員可以對照同一個畫面。
@@ -268,7 +268,7 @@ Windows/Sysmon 原生名稱），ECS 欄位是**額外加上去**的，兩種都
 改 `lab.conf`（專案根目錄，直接編輯，不用複製範本）：
 
 ```bash
-ANCHOR_DATE=2026-09-10    # 平移後的日期；改成 today 就會跟著安裝當天跑
+ANCHOR_DATE=2026-09-17    # 平移後的日期；改成 today 就會跟著安裝當天跑
 ANCHOR_LOCAL=12:00        # 平移後第一筆事件的時間
 ANCHOR_TZ=Asia/Taipei     # 時區
 STACK_VERSION=8.19.21     # Elastic 版本（已固定，換版本要自行確認 UI 路徑）
@@ -282,7 +282,7 @@ KIBANA_URL=http://localhost:5601
 
 改完跑 `./setup.sh --reshift` 生效，畫面會印出新的絕對時間範圍。
 
-- `ANCHOR_DATE=2026-09-10`（預設）→ 固定時間軸，**全班畫面一致**，
+- `ANCHOR_DATE=2026-09-17`（預設）→ 固定時間軸，**全班畫面一致**，
   但時間選擇器要用絕對範圍。
 - `ANCHOR_DATE=today` → 資料永遠落在安裝當天，時間選擇器可以直接用
   「Today」，但每個人跑的日子不同、畫面就不同。
@@ -304,7 +304,7 @@ uv run scripts/verify.py --no-zeek  # 沒有載入 Zeek
 
 有兩項腳本測不了（畫面渲染）、**要用眼睛確認**：
 Security → Explore → Hosts → Events，時間設成
-`Sep 10, 2026 @ 12:00:00.000` → `Sep 10, 2026 @ 12:40:00.000`，
+`Sep 17, 2026 @ 12:00:00.000` → `Sep 17, 2026 @ 12:40:00.000`，
 用 `event.category:"process" and event.type:"start"` 過濾，點 **Analyze event**：
 
 1. 程序樹要畫得出來，往上追得到祖先、往下展得開子程序
@@ -320,7 +320,7 @@ Security → Explore → Hosts → Events，時間設成
 |---|---|
 | Kibana 打不開 / 一直轉 | Kibana 啟動要 1–3 分鐘。`docker compose logs kibana` 看狀態 |
 | 畫面沒有資料 | 時間範圍改成上面的絕對範圍（預設 Last 15 minutes 是空的） |
-| 找不到資料 | 時間範圍要設成 `Sep 10, 2026 @ 12:00` → `12:40`（不是 Today） |
+| 找不到資料 | 時間範圍要設成 `Sep 17, 2026 @ 12:00` → `12:40`（不是 Today） |
 | 改了 `lab.conf` 沒生效 | 要跑 `./setup.sh --reshift` 重新載入 |
 | Elasticsearch 啟動後就掛掉 | 多半是記憶體不足，Docker Desktop 調到 6GB 以上 |
 | 想從頭重來 | `./setup.sh --clean` 然後 `./setup.sh` |
