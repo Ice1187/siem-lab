@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 #
+# Copyright (C) 2026 Ellis Huang
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option)
+# any later version. See the LICENSE file for the full text.
+#
 # APT29 SIEM Lab - one-click setup
 #
 #   ./setup.sh             build the lab (first run ~10 min, mostly downloading)

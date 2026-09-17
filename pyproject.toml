@@ -4,3 +4,5 @@ version = "1.0.0"
 description = "APT29 ATT&CK Evals Day 1 loaded into a local Elasticsearch + Kibana lab"
 requires-python = ">=3.11"
 dependencies = ["requests>=2.32"]
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]

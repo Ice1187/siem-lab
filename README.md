@@ -247,6 +247,7 @@ Windows/Sysmon 原生名稱），ECS 欄位是**額外加上去**的，兩種都
 
 ```
 .
+├── LICENSE                         # GPL-3.0（與上游資料集一致）
 ├── setup.sh                        # 一鍵安裝（主要入口）
 ├── docker-compose.yml              # Elasticsearch 8.19.21 + Kibana 8.19.21
 ├── lab.conf                        # ★ 設定檔：時間錨點、Elastic 版本、連線位址
@@ -327,7 +328,33 @@ Security → Explore → Hosts → Events，時間設成
 
 ---
 
-## 9. 資料來源與授權
+## 9. 授權與資料來源
 
-- 資料集：[OTRF/detection-hackathon-apt29](https://github.com/OTRF/detection-hackathon-apt29)（GPL-3.0）
-- 情境：[MITRE ATT&CK Evaluations — APT29](https://attackevals.mitre-engenuity.org/)
+### 這個 repo 的程式碼
+
+本 repo 的腳本、設定檔與文件以 **GPL-3.0-or-later** 釋出，全文見 [`LICENSE`](LICENSE)。
+你可以自由使用、修改、散布，包括拿去當課程教材；散布修改版時請一併以 GPL-3.0
+釋出並附上原始碼。
+
+### 資料集（重要）
+
+實驗用的日誌來自 [OTRF/detection-hackathon-apt29](https://github.com/OTRF/detection-hackathon-apt29)，
+授權為 **GPL-3.0**，原始情境出自
+[MITRE ATT&CK Evaluations — APT29](https://attackevals.mitre-engenuity.org/)（Round 2, 2020）。
+
+**這個 repo 不夾帶任何資料集檔案。** `data/` 在 `.gitignore` 裡，
+`scripts/fetch_dataset.py` 會在你執行 `./setup.sh` 時直接向上游 clone。
+你拿到的資料集永遠是上游那一份，適用上游的 GPL-3.0 授權。
+
+如果你要把**已經處理過的資料**（ECS 轉換後、時間平移後的 JSON、
+Elasticsearch snapshot、預載好資料的 Docker image⋯⋯）散布出去，
+那份東西是上游 GPL-3.0 作品的衍生物：你必須以 GPL-3.0 釋出、保留上述出處，
+並提供產生它的腳本。本 repo 同為 GPL-3.0，所以直接連同本 repo 一起附上即可。
+
+### 第三方元件
+
+| 元件 | 授權 | 說明 |
+|---|---|---|
+| Elasticsearch / Kibana 8.19 | Elastic License 2.0 + SSPL 雙授權 | 以官方 image 執行，未修改、未再散布。basic tier 免費，本地教學使用符合條款 |
+| `docker.elastic.co/mcp/elasticsearch` | Elastic License 2.0 | 以官方 image 執行，未修改 |
+| Sysmon 設定、稽核政策 | 見上游 [Blacksmith](https://github.com/OTRF/Blacksmith) | 僅供參考，本 repo 未收錄 |
