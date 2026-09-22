@@ -1,0 +1,707 @@
+<title>日誌分析作業</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* 配色參考 https://www.csie.ntu.edu.tw/~hchsiao/
+   sage green 主題色配 Tailwind 冷灰階。
+   內文用深綠 --accent（淺 sage 在白底上對比不足），
+   線條裝飾用 --accent-line，也就是原站的主題色本身。
+   這份是投影用的講義，固定白底，不做深色模式。 */
+:root {
+  color-scheme: light;
+  --ground:      #ffffff;
+  --sunken:      #f3f4f6;
+  --ink:         #1f2937;
+  --muted:       #4b5563;
+  --faint:       #6b7280;
+  --rule:        #e5e7eb;
+  --accent:      #2c5f4d;
+  --accent-line: #7ebaa1;
+  --accent-soft: #eef6f2;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "Source Sans 3", "PingFang TC", "Microsoft JhengHei",
+               "Noto Sans TC", "Hiragino Sans GB", sans-serif;
+  font-size: 17px;
+  line-height: 1.85;
+  -webkit-text-size-adjust: 100%;
+}
+
+.page {
+  max-width: 78ch;
+  margin: 0 auto;
+  padding-block: 3rem 6rem;
+  padding-left: 20px;
+  padding-right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+h1, h2, h3, h4 { text-wrap: balance; line-height: 1.35; margin: 0; }
+
+h1 {
+  font-size: 2.15rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  padding-bottom: 0.6rem;
+  border-bottom: 3px solid var(--accent-line);
+}
+h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 3rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--rule);
+}
+h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 1.8rem;
+  padding-left: 0.85rem;
+  border-left: 4px solid var(--accent-line);
+}
+h1 + p, h2 + p, h3 + p { margin-top: 0; }
+
+p, ul, ol { margin: 0; }
+ul, ol { padding-left: 1.6rem; display: flex; flex-direction: column; gap: 0.35rem; }
+li::marker { color: var(--faint); }
+
+strong { font-weight: 600; }
+a { color: var(--accent); }
+
+/* 「程式輸出」「報告要寫」這類單獨成段的粗體，是每題的交付標籤 */
+p > strong:only-child {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border-left: 3px solid var(--accent-line);
+  padding-left: 0.55rem;
+  margin-top: 0.7rem;
+}
+
+code {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.86em;
+  background: var(--sunken);
+  padding: 0.12em 0.36em;
+  border-radius: 3px;
+}
+
+pre {
+  margin: 0;
+  background: var(--sunken);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+}
+pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.85rem;
+  line-height: 1.65;
+  white-space: pre;
+}
+
+.table-wrap { overflow-x: auto; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.94rem;
+  font-variant-numeric: tabular-nums;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5rem 0.85rem;
+  border-bottom: 1px solid var(--rule);
+}
+th {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--faint);
+  border-bottom: 2px solid var(--rule);
+  white-space: nowrap;
+}
+tbody tr:last-child td { border-bottom: none; }
+td code { white-space: nowrap; }
+
+hr {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 1.5rem 0 0.4rem;
+}
+
+blockquote {
+  margin: 0;
+  padding: 0.9rem 1.15rem;
+  background: var(--accent-soft);
+  border-radius: 6px;
+  color: var(--ink);
+}
+blockquote > :first-child { margin-top: 0; }
+
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .page { padding-block: 2rem 4rem; }
+  h1 { font-size: 1.7rem; }
+  h2 { font-size: 1.3rem; }
+}
+</style>
+
+<main class="page">
+<h1>日誌分析作業</h1>
+<p>用 Python 在十幾萬筆 Windows 電腦日誌裡找出一場攻擊的痕跡。</p>
+<p>不需要資安背景。需要用到的知識，題目裡會直接給。</p>
+<p>這個資料夾包含：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>檔案</th>
+<th>說明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>README.md</code></td>
+<td>本作業說明</td>
+</tr>
+<tr>
+<td><code>es.py</code></td>
+<td>連資料庫用的工具</td>
+</tr>
+<tr>
+<td><code>monkey.png</code></td>
+<td>加分題用的圖片</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>題目</th>
+<th>配分</th>
+<th>小題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>基本題一：誰啟動了誰</td>
+<td>50</td>
+<td>4</td>
+</tr>
+<tr>
+<td>基本題二：找出對外連線的那根針</td>
+<td>50</td>
+<td>2</td>
+</tr>
+<tr>
+<td>加分題：把藏在圖片裡的程式碼挖出來</td>
+<td>+20</td>
+<td>2</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>每一題都有「程式輸出」和「報告要寫」兩段。這兩段是全部的要求，
+其他段落是背景說明和提示，不用回答。</strong></p>
+<h2>使用 AI</h2>
+<p>允許，也鼓勵。可以請 AI 解釋概念、教你寫查詢、幫你 debug，免費方案應該就夠用。</p>
+<p>唯一的要求是在報告最後寫三到五行「我用 AI 做了什麼」，不用附對話紀錄。</p>
+<hr />
+<h2>1. 環境準備</h2>
+<h3>1.1 啟動</h3>
+<pre><code class="language-bash">./setup.sh          # 第一次約 10 分鐘，大部分時間在下載
+</code></pre>
+<p>看到 <code>Lab is ready.</code> 表示成功。之後用 <code>./setup.sh</code> 重開、<code>./setup.sh --down</code> 關掉。</p>
+<h3>1.2 確認資料在</h3>
+<pre><code class="language-bash">curl -s &quot;http://localhost:9200/_cat/indices/winlogbeat-apt29-*?v&amp;h=index,docs.count&quot;
+</code></pre>
+<p>要看到這一行：</p>
+<pre><code>index                         docs.count
+winlogbeat-apt29-host-day1        196081
+</code></pre>
+<p>數字對不上就先別往下做，跑 <code>./setup.sh --clean</code> 再 <code>./setup.sh</code>。</p>
+<p>如果還看到一行 <code>winlogbeat-apt29-zeek-day1</code>，這份作業用不到，可以忽略。</p>
+<h3>1.3 資料</h3>
+<p>四台 Windows 電腦一個早上的日誌，共 196,081 筆，都在
+<code>winlogbeat-apt29-host-day1</code> 這個 index。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>電腦</th>
+<th>IP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SCRANTON</td>
+<td>10.0.1.4</td>
+</tr>
+<tr>
+<td>NASHUA</td>
+<td>10.0.1.6</td>
+</tr>
+<tr>
+<td>NEWYORK</td>
+<td>10.0.0.4</td>
+</tr>
+<tr>
+<td>UTICA</td>
+<td>10.0.1.5</td>
+</tr>
+</tbody>
+</table></div>
+<p>日誌的時間被平移到固定區間，所有人看到的一樣：</p>
+<pre><code>2026-09-17  12:00 – 12:40   （台北時間）
+</code></pre>
+<p>這個時間只影響 Kibana 網頁的時間選擇器。寫 Python 查資料不受影響。</p>
+<h3>1.4 會用到的欄位</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>欄位</th>
+<th>意思</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EventID</code></td>
+<td>事件種類。<code>1</code> = 有程式被啟動，<code>3</code> = 有對外連線</td>
+</tr>
+<tr>
+<td><code>host.name</code></td>
+<td>來自哪一台電腦</td>
+</tr>
+<tr>
+<td><code>@timestamp</code></td>
+<td>發生時間</td>
+</tr>
+<tr>
+<td><code>Image</code></td>
+<td>被啟動的程式，與其完整路徑</td>
+</tr>
+<tr>
+<td><code>ParentImage</code></td>
+<td>啟動此程式的母程式，與其完整路徑</td>
+</tr>
+<tr>
+<td><code>CommandLine</code></td>
+<td>啟動時帶的參數</td>
+</tr>
+<tr>
+<td><code>DestinationIp</code></td>
+<td>連到哪個 IP</td>
+</tr>
+<tr>
+<td><code>DestinationPort</code></td>
+<td>連到哪個 port</td>
+</tr>
+</tbody>
+</table></div>
+<p>電腦裡每個程式都是被另一個程式啟動的，<code>ParentImage</code> 記錄的就是啟動者。</p>
+<h3>1.5 es.py</h3>
+<p><code>es.py</code> 已經放在資料夾裡，先跑一次確認環境：</p>
+<pre><code class="language-bash">uv run es.py        # 印出 196081 就沒問題
+</code></pre>
+<p>用法：</p>
+<pre><code class="language-python">from es import fetch_all
+
+events = fetch_all(
+    {&quot;term&quot;: {&quot;EventID&quot;: 1}},                                            # 條件
+    [&quot;@timestamp&quot;, &quot;host.name&quot;, &quot;Image&quot;, &quot;ParentImage&quot;, &quot;CommandLine&quot;],  # 要哪些欄位
+)
+print(len(events))
+print(events[0])
+</code></pre>
+<p>更多查詢寫法在附錄，需要時再翻。</p>
+<hr />
+<h2>2. 基本題一：誰啟動了誰（50 分）</h2>
+<p>四台電腦整個早上只有 450 次「程式被啟動」的事件（<code>EventID: 1</code>），
+佔全部日誌的 0.2%。這 450 次大多是 Windows 的例行工作，同樣的組合會重複出現。
+攻擊者做的事情通常只出現一次。這一大題就是用出現次數把它們篩出來。</p>
+<p>程式寫在 <code>q1.py</code>。</p>
+<h3>第 1 題：數數看（10 分）</h3>
+<p>抓出全部 <code>EventID: 1</code> 的事件，取 <code>@timestamp</code>、<code>host.name</code>、<code>Image</code>、
+<code>ParentImage</code>、<code>CommandLine</code> 五個欄位。</p>
+<p><strong>程式輸出</strong>（數字是示意，不是答案）</p>
+<pre><code>總筆數: 1234
+ALPHA.example.local   500
+BRAVO.example.local   400
+CHARLIE.example.local 334
+</code></pre>
+<p><strong>報告要寫</strong></p>
+<ol>
+<li>總共幾筆</li>
+<li>每台電腦各幾筆，四台都要列</li>
+</ol>
+<h3>第 2 題：統計配對（15 分）</h3>
+<p>把每筆事件變成一組 <code>(ParentImage, Image)</code> 配對，統計每組出現幾次。</p>
+<p><strong>程式輸出</strong>（數字是示意）</p>
+<pre><code>出現最多的 5 組：
+   500  aaa.exe -&gt; bbb.exe
+   400  ccc.exe -&gt; ddd.exe
+   300  eee.exe -&gt; fff.exe
+   200  ggg.exe -&gt; hhh.exe
+   100  iii.exe -&gt; jjj.exe
+
+只出現 1 次的有 99 組
+</code></pre>
+<p><strong>報告要寫</strong></p>
+<ol>
+<li>出現最多的 5 組配對，含次數</li>
+<li>只出現 1 次的配對有幾組</li>
+</ol>
+<p><strong>提示</strong></p>
+<ul>
+<li><code>collections.Counter</code> 就夠用。</li>
+<li>有少數幾筆紀錄缺少 <code>Image</code> 欄位。用 <code>e.get("Image")</code> 取值，用 <code>e["Image"]</code> 程式會 error。</li>
+</ul>
+<h3>第 3 題：從罕見的裡面挑出可疑的（15 分）</h3>
+<p>第 2 題的「只出現 1 次」清單有 80 幾組，裡面大部分是正常的。
+Windows 開機時本來就有一堆只跑一次的程式。所以再加第二個條件：看程式住在哪裡。</p>
+<p>正常的 Windows 程式幾乎都住在固定幾個資料夾。把這四個資料夾底下的當成正常：</p>
+<pre><code>C:\Windows\System32     Windows 本體
+C:\Windows\SysWOW64     Windows 本體（32 位元版）
+C:\WindowsAzure         雲端主機的管理程式，這個實驗環境自己的雜訊
+C:\Packages             同上
+</code></pre>
+<p>規則：從「只出現 1 次」的清單裡，只留下 <code>Image</code> 和 <code>ParentImage</code>
+<strong>兩邊都不在</strong>上面四個資料夾底下的配對。任何一邊落在裡面就丟掉。</p>
+<p>過濾後剩下的數量是個位數。</p>
+<p><strong>程式輸出</strong>（路徑是示意）</p>
+<pre><code>過濾後剩 3 組：
+
+  C:\Some\Path\aaa.exe
+    -&gt; C:\Other\Path\bbb.exe
+
+  C:\Some\Path\ccc.exe
+    -&gt; C:\Other\Path\ddd.exe
+
+  C:\Some\Path\eee.exe
+    -&gt; C:\Other\Path\fff.exe
+</code></pre>
+<p><strong>報告要寫</strong></p>
+<ol>
+<li>過濾後剩下的全部配對，寫完整路徑</li>
+<li>從裡面挑 1 組，用 2 到 3 句話說明你為什麼覺得它可疑</li>
+</ol>
+<p>第 2 項評分看理由的具體程度，不看你挑哪一組。挑到正常的程式但理由寫得清楚，
+一樣給滿分。評分標準見第 5 節。</p>
+<p><strong>提示</strong></p>
+<p>路徑比對前先統一大小寫，例如 <code>p.lower().startswith("c:\\windows\\system32")</code>。
+資料裡同一個資料夾有時寫成 <code>C:\Windows\</code>、有時寫成 <code>C:\windows\</code>。</p>
+<h3>第 4 題：兩筆指定的事件（10 分）</h3>
+<p>這兩筆直接告訴你在哪，不用自己找。</p>
+<p><strong>(a)</strong> 在全部 450 筆裡找出 <code>Image</code> 結尾是 <code>PsExec64.exe</code> 的事件，
+印出它的 <code>CommandLine</code>。這幾筆的內容一樣，看一筆就好。</p>
+<p>PsExec 是一個公開的正常工具，功能是在另一台電腦上執行程式。</p>
+<p><strong>(b)</strong> 第 3 題的清單裡有一筆，<code>explorer.exe</code>（檔案總管）啟動了
+<code>â€®cod.3aka3.scr</code>。檔名開頭那三個符號是亂碼，它們原本是一個字元，
+被用錯誤的編碼解讀成三個。下面這段可以還原：</p>
+<pre><code class="language-python">import unicodedata
+
+name = &quot;â€®cod.3aka3.scr&quot;
+ch = name[:3].encode(&quot;cp1252&quot;).decode(&quot;utf-8&quot;)
+print(repr(ch), unicodedata.name(ch))
+</code></pre>
+<p><code>cp1252</code> 是 Windows 的傳統西歐編碼。這裡不能用 <code>latin-1</code>，因為 <code>€</code> 不在
+<code>latin-1</code> 的範圍內，會直接 error。</p>
+<p>拿到字元名稱後，可以問 AI 這個 Unicode 字元有什麼效果。</p>
+<p><strong>程式輸出</strong></p>
+<pre><code>(a) PsExec64.exe 的 CommandLine:
+&lt;完整命令列&gt;
+
+(b) 原始檔名  : 'â€®cod.3aka3.scr'
+    還原後字元: '\uXXXX' = &lt;字元名稱&gt;
+</code></pre>
+<p><strong>報告要寫</strong></p>
+<ol>
+<li>(a) 這行命令列裡有一個東西不應該出現。是什麼？為什麼這是問題？</li>
+<li>(b) 這個字元會造成什麼效果？使用者在檔案總管裡看到的檔名長什麼樣子？他會以為自己打開了什麼？</li>
+</ol>
+<hr />
+<h2>3. 基本題二：找出對外連線的那根針（50 分）</h2>
+<p>惡意程式要把成果傳回給攻擊者，就會產生網路連線。連線的內容可以偽裝，
+但統計上的分布很難掩飾。</p>
+<p><code>EventID: 3</code> 是「這台電腦對外建立了一條連線」，共 1,230 筆。</p>
+<p>程式寫在 <code>q2.py</code>。</p>
+<h3>第 1 題：三張統計表（20 分）</h3>
+<p>抓出全部 <code>EventID: 3</code>，取 <code>@timestamp</code>、<code>host.name</code>、<code>Image</code>、
+<code>DestinationIp</code>、<code>DestinationPort</code>。</p>
+<p>分別依 <code>DestinationPort</code>、<code>DestinationIp</code>、<code>Image</code> 分組統計，各取前 10 名。</p>
+<p><strong>程式輸出</strong>（數字是示意）</p>
+<pre><code>EventID 3 共 1234 筆
+
+1. DestinationPort
+     500  1111
+     400  2222
+     ...（共 10 列）
+
+2. DestinationIp
+     500  10.0.0.1
+     400  10.0.0.2
+     ...（共 10 列）
+
+3. Image
+     500  C:\Some\Path\aaa.exe
+     400  C:\Some\Path\bbb.exe
+     ...（共 10 列）
+</code></pre>
+<p><strong>報告要寫</strong></p>
+<ol>
+<li>三張表，各 10 列，每列都要有「值」和「筆數」</li>
+</ol>
+<h3>第 2 題：鎖定連線最多的那個 port（30 分）</h3>
+<p>第 1 張表裡的 389、88、53、135、445 是 Windows 網域環境每天都在用的服務
+（可以問 AI 它們各是什麼）。第一名那個 port 不在這個名單裡，這一題來看它。</p>
+<p>把 <code>DestinationPort</code> 等於這個 port 的紀錄篩出來成一個 list，
+然後統計下面三項。三項都要列出全部的值，不要只列第一名。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>統計項</th>
+<th>怎麼算</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>來源電腦</td>
+<td><code>Counter(e["host"]["name"] for e in sel)</code></td>
+</tr>
+<tr>
+<td>目的 IP</td>
+<td><code>Counter(e["DestinationIp"] for e in sel)</code></td>
+</tr>
+<tr>
+<td>發出的程式</td>
+<td><code>Counter(e["Image"] for e in sel)</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>程式輸出</strong>（數字是示意）</p>
+<pre><code>port     : 1111
+連線筆數 : 999
+
+來源電腦   : ALPHA.example.local  700
+             BRAVO.example.local  299
+目的 IP    : 10.0.0.1  999
+發出的程式 : C:\Some\Path\aaa.exe  999
+
+來源電腦   共 2 種
+目的 IP    共 1 種
+發出的程式 共 1 種
+</code></pre>
+<p><strong>報告要寫</strong></p>
+<ol>
+<li>上面那張表：port 號碼、連線筆數，以及三項統計的完整結果</li>
+<li>這三項各自有幾種不同的值？這樣的分布正常嗎？為什麼？</li>
+<li>看「發出的程式」那個完整路徑，用 3 到 5 句話回答：
+   這個程式叫什麼名字、聽起來是什麼軟體、它住在哪個資料夾、
+   一個正常安裝的這套軟體會裝在這裡嗎、綜合起來你覺得它可疑嗎</li>
+</ol>
+<p><strong>提示</strong></p>
+<p><code>DestinationPort</code> 在資料裡是字串，比較時要加引號：
+<code>e["DestinationPort"] == "443"</code>。寫成 <code>== 443</code> 不會成立。</p>
+<hr />
+<h2>4. 加分題：把藏在圖片裡的程式碼挖出來（+20 分）</h2>
+<p>這一大題不需要前兩題的答案，可以獨立做。需要 Pillow：<code>uv add pillow</code>。</p>
+<p>程式寫在 <code>decode.py</code>。</p>
+<p>基本題一的 450 筆事件裡，有一筆的命令列是這樣（原本是一行，這裡換行方便閱讀）：</p>
+<pre><code class="language-powershell">&quot;PowerShell.exe&quot; -noni -noexit -ep bypass -window hidden -c
+&quot;sal a New-Object;
+ Add-Type -AssemblyName 'System.Drawing';
+ $g = a System.Drawing.Bitmap('C:\Users\pbeesly\Downloads\monkey.png');
+ $o = a Byte[] 4480;
+ for ($i = 0; $i -le 6; $i++) {
+   foreach ($x in (0..639)) {
+     $p = $g.GetPixel($x, $i);
+     $o[$i * 640 + $x] = ([math]::Floor(($p.B -band 15) * 16) -bor ($p.G -band 15))
+   }
+ };
+ $g.Dispose();
+ IEX([System.Text.Encoding]::ASCII.GetString($o[0..3932]))&quot;
+</code></pre>
+<p>會用到的 PowerShell 語法：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>寫法</th>
+<th>意思</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>$g.GetPixel($x, $i)</code></td>
+<td>取出座標 <code>(x, i)</code> 的 pixel</td>
+</tr>
+<tr>
+<td><code>$p.B</code> / <code>$p.G</code></td>
+<td>這個 pixel 的藍色 / 綠色數值，範圍 0 到 255</td>
+</tr>
+<tr>
+<td><code>-band</code></td>
+<td>bitwise AND，等同 Python 的 <code>&amp;</code></td>
+</tr>
+<tr>
+<td><code>-bor</code></td>
+<td>bitwise OR，等同 Python 的 <code>|</code></td>
+</tr>
+<tr>
+<td><code>[math]::Floor(n)</code></td>
+<td>無條件捨去。這裡都是整數，沒有作用</td>
+</tr>
+<tr>
+<td><code>IEX</code></td>
+<td>把一段字串當成程式碼執行</td>
+</tr>
+</tbody>
+</table></div>
+<h3>第 1 題：讀懂它（8 分）</h3>
+<p><strong>程式輸出</strong></p>
+<p>無，這題只寫在報告裡。</p>
+<p><strong>報告要寫</strong></p>
+<p>用自己的話寫 5 到 10 句，說明這段程式在做什麼。至少要涵蓋：</p>
+<ol>
+<li>它從每個 pixel 取出多少 bit、從哪些顏色通道取</li>
+<li>總共讀了幾個 pixel、產生多少 bytes</li>
+<li>最後那行 <code>IEX</code> 讓整段程式的目的變成什麼</li>
+</ol>
+<h3>第 2 題：寫出 Python 版的解碼器（12 分）</h3>
+<p>資料夾裡的 <code>monkey.png</code> 就是用同一套規則編碼的。寫一支 <code>decode.py</code>，
+用 Python 做出跟上面那段 PowerShell 一樣的事，把藏在圖片裡的文字印出來。
+最後的 <code>IEX</code> 不要做，印出來就好。</p>
+<pre><code class="language-python">from PIL import Image
+
+img = Image.open(&quot;monkey.png&quot;).convert(&quot;RGB&quot;)
+r, g, b = img.getpixel((0, 0))     # 取出第一個 pixel
+# 你的程式碼
+</code></pre>
+<p><strong>程式輸出</strong></p>
+<p>解出來的文字，一段可讀的英文。印出亂碼表示算錯了，
+最常見的錯誤是高低半個 byte 接反。</p>
+<p><strong>報告要寫</strong></p>
+<ol>
+<li>解出來的文字，貼進報告</li>
+</ol>
+<hr />
+<h2>5. 繳交與評分</h2>
+<p>繳交一個 zip：</p>
+<pre><code>學號_姓名/
+├── report.md   (或 report.pdf)
+├── q1.py       # 基本題一
+├── q2.py       # 基本題二
+└── decode.py   # 加分題，沒做就不用交
+</code></pre>
+<p><code>monkey.png</code> 不用交回來。</p>
+<p>報告裡每一個數字都要能從你交的程式碼跑出來。報告最後寫三到五行
+「我用 AI 做了什麼」。</p>
+<h3>配分</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>題目</th>
+<th>分數</th>
+<th>給分依據</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>基本題一 第 1 題</td>
+<td>10</td>
+<td>兩項數字正確</td>
+</tr>
+<tr>
+<td>基本題一 第 2 題</td>
+<td>15</td>
+<td>兩項數字正確，統計方法正確</td>
+</tr>
+<tr>
+<td>基本題一 第 3 題</td>
+<td>15</td>
+<td>清單正確 5 分，理由 10 分</td>
+</tr>
+<tr>
+<td>基本題一 第 4 題</td>
+<td>10</td>
+<td>(a) 5 分、(b) 5 分</td>
+</tr>
+<tr>
+<td>基本題二 第 1 題</td>
+<td>20</td>
+<td>三張表各 6 到 7 分</td>
+</tr>
+<tr>
+<td>基本題二 第 2 題</td>
+<td>30</td>
+<td>第 1 項 15 分、第 2 項 5 分、第 3 項 10 分</td>
+</tr>
+<tr>
+<td>加分題 第 1 題</td>
+<td>+8</td>
+<td>三個重點各約 2.5 分</td>
+</tr>
+<tr>
+<td>加分題 第 2 題</td>
+<td>+12</td>
+<td>解得出正確文字</td>
+</tr>
+</tbody>
+</table></div>
+<p>基本題一第 3 題「理由」那 10 分的標準：</p>
+<ul>
+<li>只寫「看起來很奇怪」之類的主觀描述，0 分。</li>
+<li>講出具體的矛盾，滿分。例如（這是格式示範，不是本題答案）
+  「<code>winword.exe</code> 是 Word，它啟動了 <code>cmd.exe</code> 命令列。文書處理軟體沒有理由
+  開命令列，使用者打字時不會需要下指令。而且這個 Word 不在 Office 的安裝目錄，
+  是從下載資料夾執行的。」</li>
+</ul>
+<p>扣分：</p>
+<ul>
+<li>報告的數字跟程式跑出來的對不上，該題 0 分</li>
+<li>沒附程式碼，該題 0 分</li>
+<li>沒寫 AI 使用說明，扣 5 分</li>
+</ul>
+<hr />
+<h2>附錄：查詢寫法速查</h2>
+<pre><code class="language-python"># 某個 EventID 有幾筆
+{&quot;size&quot;: 0, &quot;track_total_hits&quot;: True, &quot;query&quot;: {&quot;term&quot;: {&quot;EventID&quot;: 1}}}
+
+# 先看看資料長怎樣（抓 5 筆，全部欄位）
+{&quot;size&quot;: 5, &quot;query&quot;: {&quot;term&quot;: {&quot;EventID&quot;: 1}}}
+
+# 兩個條件要同時成立
+{&quot;query&quot;: {&quot;bool&quot;: {&quot;must&quot;: [
+    {&quot;term&quot;: {&quot;EventID&quot;: 3}},
+    {&quot;term&quot;: {&quot;DestinationPort&quot;: &quot;445&quot;}}]}}}
+
+# 路徑裡包含某個字（Windows 路徑的反斜線要跳脫）
+{&quot;query&quot;: {&quot;wildcard&quot;: {&quot;Image&quot;: &quot;*\\\\Temp\\\\*&quot;}}}
+
+# 讓 Elasticsearch 幫忙統計，比抓下來自己數快很多
+{&quot;size&quot;: 0,
+ &quot;query&quot;: {&quot;term&quot;: {&quot;EventID&quot;: 3}},
+ &quot;aggs&quot;: {&quot;ports&quot;: {&quot;terms&quot;: {&quot;field&quot;: &quot;DestinationPort&quot;, &quot;size&quot;: 10}}}}
+# 結果在 result[&quot;aggregations&quot;][&quot;ports&quot;][&quot;buckets&quot;]
+
+# 按時間排序
+{&quot;size&quot;: 100, &quot;query&quot;: {&quot;term&quot;: {&quot;EventID&quot;: 1}},
+ &quot;sort&quot;: [{&quot;@timestamp&quot;: &quot;asc&quot;}]}
+</code></pre>
+<p>不想寫 Python 時，用 curl 直接試：</p>
+<pre><code class="language-bash">curl -s -H 'Content-Type: application/json' \
+  &quot;http://localhost:9200/winlogbeat-apt29-host-day1/_search&quot; \
+  -d '{&quot;size&quot;:1,&quot;query&quot;:{&quot;term&quot;:{&quot;EventID&quot;:1}}}'
+</code></pre>
+</main>
